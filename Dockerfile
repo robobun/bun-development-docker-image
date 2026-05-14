@@ -30,11 +30,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN mkdir -p /workspace/bun
 WORKDIR /workspace
 
-# Install Rust using rustup
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+# Install rustup only — no toolchain yet. Bun's build requires a pinned
+# nightly (for -Zbuild-std, sanitizers, and unstable APIs used by the Rust
+# port); the exact channel + components + cross-targets are declared in the
+# repo's rust-toolchain.toml. We install that after the clone so the image
+# carries exactly one toolchain that matches the checked-out ref, instead of
+# a stale `stable` that the build can't use.
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    --default-toolchain none --profile minimal --no-modify-path
 ENV PATH="/root/.cargo/bin:${PATH}"
-RUN rustup default stable && \
-    rustup component add rustfmt clippy
 
 # Install Bun
 RUN case "$(uname -s)" in \
@@ -57,14 +61,49 @@ RUN case "$(uname -s)" in \
     && ln -fs /usr/local/bun/bin/bunx /usr/local/bin/bunx \
     && rm -rf ${target}.zip ${target}
 
-# Clone Bun repository
-RUN git clone https://github.com/oven-sh/bun.git /workspace/bun
+# Clone Bun repository. BUN_REF lets you build the image against a specific
+# branch or tag — e.g. `--build-arg BUN_REF=claude/phase-a-port` for the
+# Rust-port branch. Default is main so the daily build is unchanged.
+ARG BUN_REF=main
+RUN git clone --branch ${BUN_REF} https://github.com/oven-sh/bun.git /workspace/bun
 WORKDIR /workspace/bun
 
 ENV BUN_NO_CORE_DUMP=1
 
 # Bootstrap development environment and prepare build directories
 RUN sh -c "git pull && scripts/bootstrap.sh"
+
+# Install the Rust toolchain the checked-out ref actually wants.
+#
+# rust-toolchain.toml at the repo root pins an exact nightly channel and
+# lists every `components` / `targets` entry the build needs (main pins one
+# nightly, the Rust-port branch pins a newer one). rustup reads it and
+# installs everything into this layer so the first `cargo build` in a
+# container doesn't stall on a multi-hundred-MB download.
+# `rustup toolchain install` (bare, rustup ≥ 1.28) does the read;
+# the follow-up `cargo --version` is the auto-install path for older rustup
+# and doubles as a sanity check. The resolved toolchain is then also set as
+# the global default so cargo works outside /workspace/bun too.
+#
+# On refs without rust-toolchain.toml we fall back to generic `nightly`
+# (matching .buildkite/Dockerfile) so there's still a working compiler.
+#
+# rust-src is required (for -Zbuild-std on Tier-3 targets). rustfmt / clippy
+# are dev niceties and occasionally missing from a given nightly, so they're
+# best-effort.
+RUN set -eux; \
+    if [ -f rust-toolchain.toml ]; then \
+        rustup toolchain install 2>/dev/null || true; \
+        cargo --version; \
+        rustup default "$(rustup show active-toolchain | awk '{print $1}')"; \
+    else \
+        rustup toolchain install nightly --profile minimal; \
+        rustup default nightly; \
+    fi; \
+    rustup component add rust-src; \
+    rustup component add rustfmt clippy || echo "rustfmt/clippy unavailable on this nightly; skipping"; \
+    rustc --version; \
+    rustup show
 
 
 
