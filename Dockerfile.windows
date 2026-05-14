@@ -75,6 +75,21 @@ WORKDIR C:\workspace\bun
 # Update to specific commit
 RUN git pull
 
+# Pre-install the repo-pinned Rust toolchain. bootstrap.ps1 installed rustup
+# with a stable default; when rust-toolchain.toml is present (the Rust port)
+# invoking cargo via the rustup proxy here pulls the exact pinned nightly +
+# components + targets into the image so the build step doesn't re-download.
+# No-op on refs without rust-toolchain.toml. ErrorActionPreference is relaxed
+# for this block because rustup writes progress to stderr, which Windows
+# PowerShell 5.1 otherwise promotes to a terminating error.
+RUN $ErrorActionPreference = 'Continue'; `
+    $env:PATH = $env:PATH + ';' + [System.Environment]::GetEnvironmentVariable('PATH','Machine'); `
+    if (Test-Path rust-toolchain.toml) { `
+        cargo --version; `
+        rustup component add rustfmt clippy rust-src; `
+        rustup show; `
+    }
+
 # Stage 3: Prebuilt - base + built Bun binary
 FROM base AS prebuilt
 

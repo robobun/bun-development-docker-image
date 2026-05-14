@@ -102,7 +102,14 @@ docker build -t bun-dev:local --target base .
 
 # Build pre-built image
 docker build -t bun-dev:prebuilt --target prebuilt .
+
+# Build against a specific Bun ref (branch / tag), e.g. the Rust-port branch
+docker build -t bun-dev:phase-a --target base --build-arg BUN_REF=claude/phase-a-port .
 ```
+
+The image installs whatever Rust toolchain the checked-out ref's
+`rust-toolchain.toml` pins (nightly channel, `rust-src`, cross-targets),
+falling back to generic `nightly` on refs without that file.
 
 # Build heavy image (needs :prebuilt to exist locally or be pullable)
 
