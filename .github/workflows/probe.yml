@@ -9,7 +9,29 @@ permissions:
   contents: read
 
 jobs:
-  reach:
+  pam:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: su and sudo after the ulimits section, in a build step
+        run: docker buildx build --progress=plain --no-cache --load -t probe-pam -f probe/Dockerfile.pam probe
+
+      - name: su and sudo after the ulimits section, in a container
+        run: |
+          docker run --rm probe-pam sh /probe/pam.sh check run-default
+          docker run --rm --cap-add SYS_RESOURCE probe-pam sh /probe/pam.sh check run-with-sys-resource
+
+  pin:
     strategy:
       fail-fast: false
       matrix:
@@ -21,5 +43,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Requests to apt.llvm.org from docker build, with and without IPv4 forced
-        run: docker build --progress=plain --no-cache -f probe/Dockerfile.reach probe
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Requests to apt.llvm.org, with and without the name pinned
+        run: docker buildx build --progress=plain --no-cache -f probe/Dockerfile.pin probe

@@ -1,0 +1,16 @@
+# Probe only: do su and sudo still work after the `ulimits` section of the generated script?
+FROM debian:trixie-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends git curl unzip ca-certificates sudo
+
+RUN case "$(uname -m)" in arm64 | aarch64) arch=aarch64;; *) arch=x64;; esac \
+    && curl -LO "https://pub-5e11e972747a44bf9aaf9394f185a982.r2.dev/releases/latest/bun-linux-${arch}.zip" --retry 5 \
+    && unzip "bun-linux-${arch}.zip" \
+    && mv "bun-linux-${arch}/bun" /usr/local/bin/bun \
+    && rm -rf "bun-linux-${arch}.zip" "bun-linux-${arch}"
+
+RUN git clone --depth 1 https://github.com/oven-sh/bun.git /workspace/bun
+WORKDIR /workspace/bun
+
+COPY pam.sh /probe/pam.sh
+RUN sh /probe/pam.sh build

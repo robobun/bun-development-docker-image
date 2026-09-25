@@ -1,7 +1,0 @@
-# Probe only: reachability of apt.llvm.org from a `docker build` step.
-FROM debian:trixie-slim
-
-RUN apt-get update && apt-get install -y --no-install-recommends curl wget ca-certificates
-
-COPY reach.sh /probe/reach.sh
-RUN sh /probe/reach.sh 120 8
