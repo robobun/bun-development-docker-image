@@ -73,7 +73,7 @@ ENV BUN_NO_CORE_DUMP=1
 # Install the toolchain: the script that oven-sh/bun generates for its CI
 # machines, up to its prefetch section. install-toolchain.sh has the details.
 COPY install-toolchain.sh /tmp/install-toolchain.sh
-RUN git pull && sh /tmp/install-toolchain.sh && rm /tmp/install-toolchain.sh
+RUN git checkout --quiet 29d9638da3dd5b498a5b608d3fa02549b0bdddf1 && sh /tmp/install-toolchain.sh && rm /tmp/install-toolchain.sh
 
 # Put the LLVM that the script just installed on PATH, unversioned.
 # The script does this itself, but in /etc/profile.d/bun-ci.sh, which only
@@ -141,7 +141,7 @@ FROM base AS prebuilt
 WORKDIR /workspace/bun
 
 # Clean up and prepare build environment
-RUN git pull && \
+RUN true && \
     # Clean temporary files
     rm -rf /tmp/* && \
     # Remove unnecessary packages
