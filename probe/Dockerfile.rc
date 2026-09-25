@@ -1,0 +1,7 @@
+# Probe only: requests to apt.llvm.org from a build step, with the tools' defaults and with configuration files.
+FROM debian:trixie-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl wget ca-certificates
+
+COPY rc.sh /probe/rc.sh
+RUN sh /probe/rc.sh 150 5

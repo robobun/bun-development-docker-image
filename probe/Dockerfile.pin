@@ -1,7 +1,0 @@
-# Probe only: requests to apt.llvm.org from a build step, with and without the name pinned in /etc/hosts.
-FROM debian:trixie-slim
-
-RUN apt-get update && apt-get install -y --no-install-recommends curl wget ca-certificates
-
-COPY pin.sh /probe/pin.sh
-RUN sh /probe/pin.sh 150 5
