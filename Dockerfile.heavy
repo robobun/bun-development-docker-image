@@ -70,7 +70,7 @@ WORKDIR /workspace/bun
 # all baked build dirs are warm against the same commit. Kept after the
 # Swift/Fuzzilli layers so those stay cached across daily rebuilds.
 
-RUN git pull --ff-only && \
+RUN true && \
     bun install && \
     bun install --cwd=test --ignore-scripts
 
