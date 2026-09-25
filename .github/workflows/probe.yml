@@ -14,11 +14,12 @@ jobs:
       fail-fast: false
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
+        instance: [1, 2]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 75
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Reachability of apt.llvm.org from docker build, 40 minutes
+      - name: Requests to apt.llvm.org from docker build, with and without retry defaults
         run: docker build --progress=plain --no-cache -f probe/Dockerfile.reach probe

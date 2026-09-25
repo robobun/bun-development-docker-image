@@ -4,4 +4,4 @@ FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y --no-install-recommends curl wget ca-certificates
 
 COPY reach.sh /probe/reach.sh
-RUN sh /probe/reach.sh 120 20
+RUN sh /probe/reach.sh 150 10
