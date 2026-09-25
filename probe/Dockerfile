@@ -55,4 +55,16 @@ WORKDIR /workspace/bun
 ENV BUN_NO_CORE_DUMP=1
 
 COPY probe.sh /probe/probe.sh
-RUN sh /probe/probe.sh
+
+# The whole script, once, cut before the prefetch.
+RUN sh /probe/probe.sh whole
+
+# What the `prebuilt` stage of ../Dockerfile sets before it builds.
+ENV ENABLE_ZIG_ASAN=0
+ENV BUN_DEBUG_QUIET_LOGS=1
+ENV BUN_GARBAGE_COLLECTOR_LEVEL=0
+ENV BUN_FEATURE_FLAG_INTERNAL_FOR_TESTING=1
+RUN sh /probe/probe.sh build
+
+# Is the script safe to run a second time?
+RUN sh /probe/probe.sh twice

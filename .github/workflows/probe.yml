@@ -25,5 +25,5 @@ jobs:
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
           df -h
 
-      - name: Run every section of the generated script in docker build
+      - name: Run the generated script, build bun, run the script again
         run: docker build --progress=plain --no-cache -f probe/Dockerfile probe
