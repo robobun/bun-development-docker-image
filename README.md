@@ -22,7 +22,7 @@ This image contains:
 - Debian bookworm slim as the base OS
 - Bun repository cloned to `/workspace/bun`
 - Development dependencies installed
-- Bootstrap script already executed
+- The toolchain of Bun's CI machines, installed by the script that oven-sh/bun generates for them (see `install-toolchain.sh`)
 - Modern GCC/G++ 12 with full C++20 support (including constexpr std::array<std::string>)
 
 ### Pre-built Image

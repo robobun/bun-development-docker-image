@@ -70,17 +70,17 @@ WORKDIR /workspace/bun
 
 ENV BUN_NO_CORE_DUMP=1
 
-# Bootstrap development environment and prepare build directories
-RUN sh -c "git pull && scripts/bootstrap.sh"
+# Install the toolchain: the script that oven-sh/bun generates for its CI
+# machines, up to its prefetch section. install-toolchain.sh has the details.
+COPY install-toolchain.sh /tmp/install-toolchain.sh
+RUN git pull && sh /tmp/install-toolchain.sh && rm /tmp/install-toolchain.sh
 
-# Put the LLVM that bootstrap.sh just installed on PATH, unversioned.
-# bootstrap.sh does this itself with `append_to_path /usr/lib/llvm-N/bin`,
-# but that only writes shell profiles, which Docker RUN/exec shells never
-# source, and its /usr/bin/llvm-symbolizer symlink lives in the Ubuntu-only
-# install_gcc path, so on this Debian image `clang`, `ld.lld`,
-# `llvm-symbolizer` etc. resolve only as `-N` names. A stable
-# /usr/lib/llvm-current -> the newest llvm-N tracks whatever version bun
-# main pins without editing this file on every LLVM bump.
+# Put the LLVM that the script just installed on PATH, unversioned.
+# The script does this itself, but in /etc/profile.d/bun-ci.sh, which only
+# login shells read. Docker RUN/exec shells never do, so on this Debian image
+# `clang`, `ld.lld`, `llvm-symbolizer` etc. resolve only as `-N` names. A
+# stable /usr/lib/llvm-current -> the newest llvm-N tracks whatever version
+# bun main pins without editing this file on every LLVM bump.
 RUN set -eu; \
     llvm_dir="$(ls -d /usr/lib/llvm-[0-9]* | sort -V | tail -n1)"; \
     test -x "$llvm_dir/bin/clang"; \
