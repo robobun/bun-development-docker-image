@@ -9,21 +9,16 @@ permissions:
   contents: read
 
 jobs:
-  probe:
+  reach:
     strategy:
       fail-fast: false
       matrix:
         runner: [ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 90
+    timeout-minutes: 75
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
-          df -h
-
-      - name: Run the generated script, build bun, run the script again
-        run: docker build --progress=plain --no-cache -f probe/Dockerfile probe
+      - name: Reachability of apt.llvm.org from docker build, 40 minutes
+        run: docker build --progress=plain --no-cache -f probe/Dockerfile.reach probe
