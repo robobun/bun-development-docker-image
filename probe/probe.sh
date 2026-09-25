@@ -9,6 +9,28 @@ cd /workspace/bun
 commit=$(git rev-parse HEAD)
 echo "probe: bun commit $commit"
 echo "probe: uname -m $(uname -m)"
+echo "probe: before any section: systemctl=$(command -v systemctl || echo -) /etc/systemd=$([ -d /etc/systemd ] && echo yes || echo no)"
+
+# How often does apt.llvm.org accept a connection from this runner?
+reach() {
+  label=$1
+  ok=0
+  fail=0
+  echo "probe: apt.llvm.org resolves to: $(getent ahosts apt.llvm.org | awk '{print $1}' | sort -u | tr '\n' ' ')"
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if out=$(curl --silent --show-error --output /dev/null --connect-timeout 15 --max-time 60 \
+      --write-out '%{http_code} %{remote_ip} %{time_connect}s' https://apt.llvm.org/llvm.sh 2>&1); then
+      ok=$((ok + 1))
+      echo "probe: reach[$label] attempt $attempt: ok $out"
+    else
+      fail=$((fail + 1))
+      echo "probe: reach[$label] attempt $attempt: FAILED $out"
+    fi
+    sleep 3
+  done
+  echo "probe: reach[$label] RESULT ok=$ok failed=$fail of 10"
+}
+reach start
 
 # The Debian image of this architecture, with the cross-compile tools of the
 # `build` role left out.
@@ -46,6 +68,7 @@ for section in /probe/sections/[0-9][0-9]-*; do
       printf '%-18s %-6s %6s %9s\n' "$name" skip - - >> "$results"
       continue
       ;;
+    llvm) reach before-llvm ;;
   esac
   run="$bake/run-$name.sh"
   {
@@ -64,7 +87,11 @@ for section in /probe/sections/[0-9][0-9]-*; do
   status=$?
   end=$(date +%s)
   after=$(used)
+  case "$name" in
+    packages) grep -E '^Setting up (systemd|systemd-sysv|dbus|libpam-systemd|init-system-helpers)' "/probe/log-$name.txt" ;;
+  esac
   tail -n 25 "/probe/log-$name.txt"
+  echo "probe: after $name: systemctl=$(command -v systemctl || echo -)"
   printf '%-18s %-6s %5ss %8sMB\n' "$name" "exit=$status" "$((end - start))" "$(((after - before) / 1024))" >> "$results"
 done
 
@@ -85,10 +112,15 @@ echo "--- /usr/lib/llvm-*"
 ls -d /usr/lib/llvm-* 2>/dev/null
 echo "--- /opt"
 ls -la /opt 2>/dev/null
-echo "--- getent passwd buildkite-agent"
-getent passwd buildkite-agent
-echo "--- /etc/systemd"
-ls -la /etc/systemd 2>/dev/null || echo "no /etc/systemd"
 echo "--- df"
 df -h /
+
+echo
+echo "================================================================"
+echo "probe: bun's configure, in a login shell (the environment the script wrote)"
+echo "================================================================"
+sh -lc 'cd /workspace/bun && echo "PATH=$PATH" && command -v clang cargo rustc bun node cmake; bun --version; clang --version | head -1; rustc --version; bun scripts/build.ts --profile=debug --configure-only' > /probe/log-configure.txt 2>&1
+configure_status=$?
+tail -n 60 /probe/log-configure.txt
+echo "probe: configure exit=$configure_status"
 exit 0
