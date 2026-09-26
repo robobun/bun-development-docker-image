@@ -40,7 +40,17 @@ fi
 sed '/^# ---- prefetch$/,$d' "$bake/bootstrap.sh" > "$bake/toolchain.sh"
 echo "install-toolchain: sections: $(grep '^# ---- ' "$bake/toolchain.sh" | cut -c8- | tr '\n' ' ')"
 
-sh "$bake/toolchain.sh" "$(git rev-parse HEAD)" bun-development-docker-image
+# Some lookups of apt.llvm.org return one IPv6 address and nothing else. A
+# build container has no IPv6 route, so curl and wget fail at once ("Network
+# is unreachable", and llvm.sh then says the distribution "is not supported").
+# Their retries reuse the failed lookup. These files make both tools ask for
+# IPv4 only and look the name up again for each retry. CURL_HOME and WGETRC
+# apply them to the generated script and to nothing else.
+printf 'ipv4\nretry-all-errors\n' > "$bake_root/.curlrc"
+printf 'inet4_only = on\nretry_on_host_error = on\nretry_connrefused = on\n' > "$bake_root/wgetrc"
+
+CURL_HOME="$bake_root" WGETRC="$bake_root/wgetrc" \
+  sh "$bake/toolchain.sh" "$(git rev-parse HEAD)" bun-development-docker-image
 rm -rf "$bake_root"
 
 # The script writes the node-gyp header cache for CI's agent user alone. Root
